@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model addresses {
+  id                      Int       @id @default(autoincrement())
+  country                 String    @db.Char(2)
+  administrative_area     String    @db.VarChar(100)
+  sub_administrative_area String?   @db.VarChar(100)
+  locality                String    @db.VarChar(100)
+  dependent_locality      String?   @db.VarChar(100)
+  postal_code             String    @db.VarChar(20)
+  thoroughfare            String    @db.VarChar(255)
+  premise                 String?   @db.VarChar(100)
+  sub_premise             String?   @db.VarChar(100)
+  organisation_name       String?   @db.VarChar(100)
+  created_at              DateTime? @db.Timestamp(6)
+  updated_at              DateTime? @db.Timestamp(6)
+  schools                 schools?
+}
+
+model exercises {
+  id                       Int                        @id @default(autoincrement())
+  exercise_name            String                     @unique @db.VarChar(100)
+  description              String?                    @db.VarChar(500)
+  muscle_group             String?                    @db.VarChar(50)
+  created_at               DateTime?                  @db.Timestamp(6)
+  updated_at               DateTime?                  @db.Timestamp(6)
+  player_exercise_progress player_exercise_progress[]
+  workout_exercises        workout_exercises[]
+}
+
+model player_exercise_progress {
+  id                    Int                 @id @default(autoincrement())
+  workout_assignment_id Int
+  exercise_id           Int
+  completed_sets        Int                 @default(0)
+  completed_reps        Int                 @default(0)
+  weight_used           Float?
+  notes                 String?             @db.VarChar(100)
+  recorded_at           DateTime            @db.Timestamp(6)
+  created_at            DateTime?           @db.Timestamp(6)
+  updated_at            DateTime?           @db.Timestamp(6)
+  exercises             exercises           @relation(fields: [exercise_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workout_assignments   workout_assignments @relation(fields: [workout_assignment_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model schools {
+  id          Int        @id @default(autoincrement())
+  school_name String     @unique @db.VarChar(100)
+  address_id  Int?       @unique
+  created_at  DateTime?  @db.Timestamp(6)
+  updated_at  DateTime?  @db.Timestamp(6)
+  addresses   addresses? @relation(fields: [address_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  teams       teams[]
+}
+
+model sports {
+  id         Int       @id @default(autoincrement())
+  name       String    @unique @db.VarChar(50)
+  created_at DateTime? @db.Timestamp(6)
+  updated_at DateTime? @db.Timestamp(6)
+  teams      teams[]
+}
+
+model team_primary_contacts {
+  team_id    Int
+  user_id    Int
+  created_at DateTime? @db.Timestamp(6)
+  updated_at DateTime? @db.Timestamp(6)
+  teams      teams     @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([team_id, user_id])
+}
+
+model teams {
+  id                    Int                     @id @default(autoincrement())
+  name                  String                  @db.VarChar(50)
+  is_school_team        Boolean
+  school_id             Int?
+  sport_id              Int
+  created_at            DateTime?               @db.Timestamp(6)
+  updated_at            DateTime?               @db.Timestamp(6)
+  team_primary_contacts team_primary_contacts[]
+  schools               schools?                @relation(fields: [school_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sports                sports                  @relation(fields: [sport_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_teams            user_teams[]
+}
+
+model user_teams {
+  team_id    Int
+  user_id    Int
+  role       user_team_role
+  start_date DateTime?      @db.Timestamp(6)
+  end_date   DateTime?      @db.Timestamp(6)
+  created_at DateTime?      @db.Timestamp(6)
+  updated_at DateTime?      @db.Timestamp(6)
+  teams      teams          @relation(fields: [team_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users      users          @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([team_id, user_id])
+}
+
+model users {
+  id                    Int                     @id @default(autoincrement())
+  first_name            String                  @db.VarChar(50)
+  last_name             String                  @db.VarChar(50)
+  email                 String                  @unique @db.VarChar(100)
+  is_admin              Boolean
+  created_at            DateTime?               @db.Timestamp(6)
+  updated_at            DateTime?               @db.Timestamp(6)
+  team_primary_contacts team_primary_contacts[]
+  user_teams            user_teams[]
+  workouts              workouts[]
+}
+
+model workout_assignments {
+  id                       Int                        @id @default(autoincrement())
+  workout_id               Int
+  assignee_type            assignee_type_enum
+  assignee_id              Int
+  start_date               DateTime                   @db.Timestamp(6)
+  end_date                 DateTime?                  @db.Timestamp(6)
+  created_at               DateTime?                  @db.Timestamp(6)
+  updated_at               DateTime?                  @db.Timestamp(6)
+  player_exercise_progress player_exercise_progress[]
+  workouts                 workouts                   @relation(fields: [workout_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model workout_exercises {
+  id            Int       @id @default(autoincrement())
+  workout_id    Int
+  exercise_id   Int
+  sets          Int
+  reps          Int
+  rest_interval Int
+  rpe           Int?
+  created_at    DateTime? @db.Timestamp(6)
+  updated_at    DateTime? @db.Timestamp(6)
+  exercises     exercises @relation(fields: [exercise_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  workouts      workouts  @relation(fields: [workout_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model workouts {
+  id                  Int                   @id @default(autoincrement())
+  created_by          Int
+  workout_name        String                @db.VarChar(100)
+  description         String?               @db.VarChar(500)
+  created_at          DateTime?             @db.Timestamp(6)
+  updated_at          DateTime?             @db.Timestamp(6)
+  workout_assignments workout_assignments[]
+  workout_exercises   workout_exercises[]
+  users               users                 @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+enum assignee_type_enum {
+  team
+  user
+}
+
+enum user_team_role {
+  admin
+  trainer
+  coach
+  athlete
+}
